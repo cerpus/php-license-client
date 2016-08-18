@@ -71,7 +71,7 @@ class LicenseClient
 
         $addLicenseResponse = $this->doRequest($endPoint, [], 'PUT');
         $addContentJson = json_decode($addLicenseResponse);
-        if (!array_key_exists($addContentJson['id'])) {
+        if (!property_exists($addContentJson, 'id')) {
             return false;
         }
 
@@ -84,7 +84,7 @@ class LicenseClient
 
         $removeLicenseResponse = $this->doRequest($endPoint, [], 'DELETE');
         $addContentJson = json_decode($removeLicenseResponse);
-        if (!array_key_exists($addContentJson['id'])) {
+        if (!property_exists($addContentJson, 'id')) {
             return false;
         }
 
