@@ -1,0 +1,22 @@
+{
+    "name": "cerpus/license-client",
+    "description": "Use the Cerpus License server to manage license for content",
+    "keywords": ["laravel", "Cerpus License-Server Client"],
+    "type": "Laravel package",
+    "license": "Closed",
+    "authors": [
+        {
+            "name": "Odd-Arne Johansen",
+            "email": "odd-arne.johansen@cerpus.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "guzzlehttp/guzzle": "^6.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Cerpus\\LicenseClient\\": "src/"
+        }
+    }
+}
