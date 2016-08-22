@@ -37,12 +37,12 @@ class LicenseClient
     public function addContent($id, $name)
     {
         $params = [
-            'site' => $this->licenseConfig['site'],
             'content_id' => $id,
             'name' => $name
         ];
 
-        $addContentResponse = $this->doRequest('/v1/content', $params, 'POST');
+        $addContentResponse = $this->doRequest('/v1/site/' . $this->licenseConfig['site'] . '/content', $params,
+            'POST');
         $addContentJson = json_decode($addContentResponse);
         if (!property_exists($addContentJson, 'id')) {
             return false;
@@ -53,23 +53,23 @@ class LicenseClient
 
     public function getContent($id)
     {
-        $endPoint = '/v1/content/' . $id;
+        $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
 
         return (object)json_decode($this->doRequest($endPoint, []));
     }
 
     public function deleteContent($id)
     {
-        $endPoint = '/v1/content/' . $id;
+        $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
 
         return (object)json_decode($this->doRequest($endPoint, [], 'DELETE'));
     }
 
     public function addLicense($id, $license_id)
     {
-        $endPoint = '/v1/content/' . $id . '/licenses/' . $license_id;
+        $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
 
-        $addLicenseResponse = $this->doRequest($endPoint, [], 'PUT');
+        $addLicenseResponse = $this->doRequest($endPoint, ['license_id' => $license_id], 'PUT');
         $addContentJson = json_decode($addLicenseResponse);
         if (!property_exists($addContentJson, 'id')) {
             return false;
@@ -80,9 +80,9 @@ class LicenseClient
 
     public function removeLicense($id, $license_id)
     {
-        $endPoint = '/v1/content/' . $id . '/licenses/' . $license_id;
+        $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
 
-        $removeLicenseResponse = $this->doRequest($endPoint, [], 'DELETE');
+        $removeLicenseResponse = $this->doRequest($endPoint, ['license_id' => $license_id], 'DELETE');
         $addContentJson = json_decode($removeLicenseResponse);
         if (!property_exists($addContentJson, 'id')) {
             return false;
@@ -93,10 +93,15 @@ class LicenseClient
 
     private function doRequest($endPoint, $params = [], $method = 'GET')
     {
-        $token = $this->getToken();
         $responseClient = new Client(['base_uri' => $this->licenseConfig['server']]);
-        $params = array_merge(['token' => $token], $params);
-        $finalParams = ['form_params' => $params];
+        $headers = [
+            'Authorization' => 'Bearer ' . $this->getToken()
+        ];
+        $finalParams = [
+            'form_params' => $params,
+            'headers' => $headers,
+        ];
+
         $response = $responseClient->request($method, $endPoint, $finalParams);
 
         return $response->getBody();
@@ -104,6 +109,7 @@ class LicenseClient
 
     protected function getToken()
     {
+        //TODO: Cache this...
         if (is_null($this->oauthToken)) {
             $licenseServer = $this->licenseConfig['server'];
             $licenseClient = new Client(['base_uri' => $licenseServer]);
