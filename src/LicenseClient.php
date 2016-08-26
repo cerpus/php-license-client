@@ -206,7 +206,8 @@ class LicenseClient
                 $oauthJson = json_decode($authResponse->getBody());
                 $this->oauthToken = $oauthJson->access_token;
                 Cache::put($tokenName, $this->oauthToken, 3);
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
+                Log::error(__METHOD__. ': Unable to get token: URL: '.$authUrl.'. Wrong key/secret?');
                 return false;
             }
         }
