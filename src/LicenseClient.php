@@ -13,8 +13,8 @@ class LicenseClient
     public function __construct($licenseConfig = [], $oauthKey = null, $oauthSecret = null)
     {
         $this->licenseConfig = empty($licenseConfig) ? config('license') : $licenseConfig;
-        $this->oauthKey = $oauthKey;
-        $this->oauthSecret = $oauthSecret;
+        $this->oauthKey = empty($oauthKey) ? config('license.key') : $oauthKey;
+	    $this->oauthSecret = empty($oauthSecret) ? config('license.secret') : $oauthSecret;
     }
 
     public function setOauthKey($oauthKey)
@@ -95,11 +95,15 @@ class LicenseClient
     {
         $token = $this->getToken();
         $responseClient = new Client(['base_uri' => $this->licenseConfig['server']]);
-        $params = array_merge(['token' => $token], $params);
-        $finalParams = ['form_params' => $params];
+	    $finalParams = [
+		    'form_params' => $params,
+		    'headers'     => [
+			    'Authorization' => 'Bearer ' . $token
+		    ],
+	    ];
         $response = $responseClient->request($method, $endPoint, $finalParams);
 
-        return $response->getBody();
+        return $response->getBody()->getContents();
     }
 
     protected function getToken()
@@ -128,4 +132,22 @@ class LicenseClient
         return $this->oauthToken;
 
     }
+
+	public function isContentCopyable($license)
+	{
+		$endpoint = sprintf('v1/licenses/%s/copyable', $license);
+
+		try{
+			$responseBody = $this->doRequest($endpoint);
+			$responseJson = json_decode($responseBody);
+		} catch (\Exception $e){
+			return false;
+		}
+
+
+		if( empty($responseJson->copyable) ){
+			return false;
+		}
+		return true;
+	}
 }
