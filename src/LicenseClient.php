@@ -2,6 +2,8 @@
 
 namespace Cerpus\LicenseClient;
 
+use Log;
+use Cache;
 use GuzzleHttp\Client;
 
 class LicenseClient
@@ -15,6 +17,17 @@ class LicenseClient
         $this->licenseConfig = empty($licenseConfig) ? config('license') : $licenseConfig;
         $this->oauthKey = $oauthKey;
         $this->oauthSecret = $oauthSecret;
+        $this->verifyConfig();
+    }
+
+    private function verifyConfig()
+    {
+        $hasSite = array_key_exists('site', $this->licenseConfig);
+        $hasServer = array_key_exists('server', $this->licenseConfig);
+
+        if (!($hasSite && $hasServer)) {
+            throw new Exception('LicenseClient->licenseConfig is missing one or more config fields. Make sure both "site" and "server" keys exist.');
+        }
     }
 
     public function setOauthKey($oauthKey)
@@ -29,20 +42,37 @@ class LicenseClient
 
     public function getLicenses()
     {
-        $endPoint = '/v1/licenses';
+        $licenseKey = __METHOD__ . '-licenses';
+        $licenses = Cache::get($licenseKey);
+        if (is_null($licenses)) {
+            $endPoint = '/v1/licenses';
 
-        return json_decode($this->doRequest($endPoint, []));
+            $licenses = $this->doRequest($endPoint, []);
+
+            if ($licenses === false) {
+                return []; // Empty list
+            }
+            $licenses = json_decode($licenses);
+            Cache::put($licenseKey, $licenses, 7);
+        }
+        return $licenses;
     }
 
     public function addContent($id, $name)
     {
         $params = [
-            'site' => $this->licenseConfig['site'],
             'content_id' => $id,
             'name' => $name
         ];
 
-        $addContentResponse = $this->doRequest('/v1/content', $params, 'POST');
+        $addContentResponse = $this->doRequest('/v1/site/' . $this->licenseConfig['site'] . '/content',
+            $params,
+            'POST');
+
+        if ($addContentResponse === false) { // Could not add content
+            return false;
+        }
+
         $addContentJson = json_decode($addContentResponse);
         if (!property_exists($addContentJson, 'id')) {
             return false;
@@ -53,25 +83,43 @@ class LicenseClient
 
     public function getContent($id)
     {
-        $endPoint = '/v1/content/' . $id;
+        $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
 
-        return (object)json_decode($this->doRequest($endPoint, []));
+        $getContentResponse = $this->doRequest($endPoint, []);
+
+        if ($getContentResponse === false) {
+            return false;
+        }
+
+
+        return (object)json_decode($getContentResponse);
     }
 
     public function deleteContent($id)
     {
-        $endPoint = '/v1/content/' . $id;
+        $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
 
-        return (object)json_decode($this->doRequest($endPoint, [], 'DELETE'));
+        $deleteContentResponse = $this->doRequest($endPoint, [], 'DELETE');
+
+        if ($deleteContentResponse === false) {
+            return false;
+        }
+
+        return (object)json_decode($deleteContentResponse);
     }
 
     public function addLicense($id, $license_id)
     {
-        $endPoint = '/v1/content/' . $id . '/licenses/' . $license_id;
+        $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
 
-        $addLicenseResponse = $this->doRequest($endPoint, [], 'PUT');
+        $addLicenseResponse = $this->doRequest($endPoint, ['license_id' => $license_id], 'PUT');
+
+        if ($addLicenseResponse === false) {
+            return false;
+        }
+
         $addContentJson = json_decode($addLicenseResponse);
-        if (!array_key_exists($addContentJson['id'])) {
+        if (!property_exists($addContentJson, 'id')) {
             return false;
         }
 
@@ -80,52 +128,90 @@ class LicenseClient
 
     public function removeLicense($id, $license_id)
     {
-        $endPoint = '/v1/content/' . $id . '/licenses/' . $license_id;
+        $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
 
-        $removeLicenseResponse = $this->doRequest($endPoint, [], 'DELETE');
-        $addContentJson = json_decode($removeLicenseResponse);
-        if (!array_key_exists($addContentJson['id'])) {
+        $removeLicenseResponse = $this->doRequest($endPoint, ['license_id' => $license_id], 'DELETE');
+
+        if ($removeLicenseResponse === false) {
             return false;
         }
 
-        return (object)$addContentJson;
+        $removeLicenseJson = json_decode($removeLicenseResponse);
+        if (!property_exists($removeLicenseJson, 'id')) {
+            return false;
+        }
+
+        return (object)$removeLicenseJson;
     }
 
     private function doRequest($endPoint, $params = [], $method = 'GET')
     {
         $token = $this->getToken();
-        $responseClient = new Client(['base_uri' => $this->licenseConfig['server']]);
-        $params = array_merge(['token' => $token], $params);
-        $finalParams = ['form_params' => $params];
-        $response = $responseClient->request($method, $endPoint, $finalParams);
+        try {
+            $finalParams = [];
+            $responseClient = new Client(['base_uri' => $this->licenseConfig['server']]);
 
-        return $response->getBody();
+            if ($token) {
+                $headers = [
+                    'Authorization' => 'Bearer ' . $token
+                ];
+                $finalParams = [
+                    'form_params' => $params,
+                    'headers' => $headers,
+                ];
+
+                $response = $responseClient->request($method, $endPoint, $finalParams);
+
+                return $response->getBody();
+            } else {
+                Log::error(__METHOD__ . ' Missing token.');
+
+                return false;
+            }
+        } catch (\Exception $e) {
+            Log::error(__METHOD__ . " $method request to " . $this->licenseConfig['server'] . $endPoint . " failed. " . $e->getCode() . ' ' . $e->getMessage(),
+                $finalParams);
+
+            return false;
+        }
+
     }
 
+    /**
+     * Get token to talk to license server
+     * @return bool|string false on failure, token otherwise
+     */
     protected function getToken()
     {
+        $tokenName = __METHOD__ . '-licenseToken';
+        $this->oauthToken = Cache::get($tokenName);
         if (is_null($this->oauthToken)) {
-            $licenseServer = $this->licenseConfig['server'];
-            $licenseClient = new Client(['base_uri' => $licenseServer]);
-            $authResponse = $licenseClient->get('/v1/oauth2/service');
-            $authJson = json_decode($authResponse->getBody());
-            $authUrl = $authJson->url;
+            try {
+                $licenseServer = $this->licenseConfig['server'];
+                $licenseClient = new Client(['base_uri' => $licenseServer]);
+                $authResponse = $licenseClient->get('/v1/oauth2/service');
+                $authJson = json_decode($authResponse->getBody());
+                $authUrl = $authJson->url;
 
-            $authClient = new Client(['base_uri' => $authUrl]);
-            $authResponse = $authClient->request('POST', '/oauth/token', [
-                'auth' => [
-                    $this->oauthKey,
-                    $this->oauthSecret
-                ],
-                'form_params' => [
-                    'grant_type' => 'client_credentials'
-                ],
-            ]);
-            $oauthJson = json_decode($authResponse->getBody());
-            $this->oauthToken = $oauthJson->access_token;
+                $authClient = new Client(['base_uri' => $authUrl]);
+                $authResponse = $authClient->request('POST', '/oauth/token', [
+                    'auth' => [
+                        $this->oauthKey,
+                        $this->oauthSecret
+                    ],
+                    'form_params' => [
+                        'grant_type' => 'client_credentials'
+                    ],
+                ]);
+                $oauthJson = json_decode($authResponse->getBody());
+                $this->oauthToken = $oauthJson->access_token;
+                Cache::put($tokenName, $this->oauthToken, 3);
+            } catch (\Exception $e) {
+                Log::error(__METHOD__. ': Unable to get token: URL: '.$authUrl.'. Wrong key/secret?');
+                return false;
+            }
         }
 
         return $this->oauthToken;
-
     }
 }
