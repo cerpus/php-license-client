@@ -15,8 +15,8 @@ class LicenseClient
     public function __construct($licenseConfig = [], $oauthKey = null, $oauthSecret = null)
     {
         $this->licenseConfig = empty($licenseConfig) ? config('license') : $licenseConfig;
-        $this->oauthKey = $oauthKey;
-        $this->oauthSecret = $oauthSecret;
+        $this->oauthKey = empty($oauthKey) ? config('cerpus-auth.key') : $oauthKey;
+	    $this->oauthSecret = empty($oauthSecret) ? config('cerpus-auth.secret') : $oauthSecret;
         $this->verifyConfig();
     }
 
@@ -84,15 +84,24 @@ class LicenseClient
     public function getContent($id)
     {
         $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
+        $cachedKey = "GET-" . $endPoint;
+        $cached = Cache::get($cachedKey);
+        if( is_null($cached) ){
+            try{
+                $getContentResponse = $this->doRequest($endPoint, []);
+            } catch (\Exception $e){
+                Log::error('Unable to get content for ' . $id . ': ' . $e->getMessage());
+                return false;
+            }
 
-        $getContentResponse = $this->doRequest($endPoint, []);
-
-        if ($getContentResponse === false) {
-            return false;
+            if ($getContentResponse === false) {
+                return false;
+            }
+            $cached = (object)json_decode($getContentResponse);
+            Cache::put($cachedKey, $cached, 10);
         }
 
-
-        return (object)json_decode($getContentResponse);
+        return $cached;
     }
 
     public function deleteContent($id)
@@ -214,4 +223,33 @@ class LicenseClient
 
         return $this->oauthToken;
     }
+
+    public function isContentCopyable($id)
+    {
+        $licenseContent = $this->getContent($id);
+        if (empty($licenseContent)) {
+            return false;
+        }
+
+        $license = $licenseContent->licenses[0];
+        return $this->isLicenseCopyable($license);
+    }
+
+	public function isLicenseCopyable($license)
+	{
+		$endpoint = sprintf('v1/licenses/%s/copyable', $license);
+
+		try{
+			$responseBody = $this->doRequest($endpoint);
+			$responseJson = json_decode($responseBody);
+		} catch (\Exception $e){
+			return false;
+		}
+
+
+		if( empty($responseJson->copyable) ){
+			return false;
+		}
+		return true;
+	}
 }
