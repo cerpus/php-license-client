@@ -5,7 +5,6 @@ namespace Cerpus\LicenseClient;
 use Log;
 use Cache;
 use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Log;
 
 class LicenseClient
 {
@@ -16,10 +15,8 @@ class LicenseClient
     public function __construct($licenseConfig = [], $oauthKey = null, $oauthSecret = null)
     {
         $this->licenseConfig = empty($licenseConfig) ? config('license') : $licenseConfig;
-        $this->oauthKey = empty($oauthKey) ? config('license.key') : $oauthKey;
-	    $this->oauthSecret = empty($oauthSecret) ? config('license.secret') : $oauthSecret;
-        $this->oauthKey = $oauthKey;
-        $this->oauthSecret = $oauthSecret;
+        $this->oauthKey = empty($oauthKey) ? config('cerpus-auth.key') : $oauthKey;
+	    $this->oauthSecret = empty($oauthSecret) ? config('cerpus-auth.secret') : $oauthSecret;
         $this->verifyConfig();
     }
 
@@ -87,24 +84,24 @@ class LicenseClient
     public function getContent($id)
     {
         $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
-/*
- *         try{
-            return (object)json_decode($this->doRequest($endPoint, []));
-        } catch (\Exception $e){
-            Log::error('Unable to get content for ' . $id . ': ' . $e->getMessage());
-            return false;
+        $cachedKey = "GET-" . $endPoint;
+        $cached = Cache::get($cachedKey);
+        if( is_null($cached) ){
+            try{
+                $getContentResponse = $this->doRequest($endPoint, []);
+            } catch (\Exception $e){
+                Log::error('Unable to get content for ' . $id . ': ' . $e->getMessage());
+                return false;
+            }
+
+            if ($getContentResponse === false) {
+                return false;
+            }
+            $cached = (object)json_decode($getContentResponse);
+            Cache::put($cachedKey, $cached, 10);
         }
 
- */
-
-        $getContentResponse = $this->doRequest($endPoint, []);
-
-        if ($getContentResponse === false) {
-            return false;
-        }
-
-
-        return (object)json_decode($getContentResponse);
+        return $cached;
     }
 
     public function deleteContent($id)
