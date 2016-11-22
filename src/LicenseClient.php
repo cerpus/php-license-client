@@ -103,7 +103,7 @@ class LicenseClient
 	    ];
         $response = $responseClient->request($method, $endPoint, $finalParams);
 
-        return $response->getBody()->getContents();
+        return $response->getBody();
     }
 
     protected function getToken()
@@ -138,7 +138,7 @@ class LicenseClient
 		$endpoint = sprintf('v1/licenses/%s/copyable', $license);
 
 		try{
-			$responseBody = $this->doRequest($endpoint);
+			$responseBody = $this->doRequest($endpoint)->getContents();
 			$responseJson = json_decode($responseBody);
 		} catch (\Exception $e){
 			return false;
