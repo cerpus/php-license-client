@@ -3,6 +3,7 @@
 namespace Cerpus\LicenseClient;
 
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
 
 class LicenseClient
 {
@@ -54,8 +55,12 @@ class LicenseClient
     public function getContent($id)
     {
         $endPoint = '/v1/content/' . $id;
-
-        return (object)json_decode($this->doRequest($endPoint, []));
+        try{
+            return (object)json_decode($this->doRequest($endPoint, []));
+        } catch (\Exception $e){
+            Log::error('Unable to get content for ' . $id . ': ' . $e->getMessage());
+            return false;
+        }
     }
 
     public function deleteContent($id)
@@ -133,12 +138,23 @@ class LicenseClient
 
     }
 
-	public function isContentCopyable($license)
+    public function isContentCopyable($id)
+    {
+        $licenseContent = $this->getContent($id);
+        if (empty($licenseContent)) {
+            return false;
+        }
+
+        $license = $licenseContent->licenses[0];
+        return $this->isLicenseCopyable($license);
+    }
+
+	public function isLicenseCopyable($license)
 	{
 		$endpoint = sprintf('v1/licenses/%s/copyable', $license);
 
 		try{
-			$responseBody = $this->doRequest($endpoint)->getContents();
+			$responseBody = $this->doRequest($endpoint);
 			$responseJson = json_decode($responseBody);
 		} catch (\Exception $e){
 			return false;
