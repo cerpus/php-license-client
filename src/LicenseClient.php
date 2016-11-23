@@ -85,7 +85,7 @@ class LicenseClient
     {
         $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
         $cachedKey = "GET-" . $endPoint;
-        $cached = Cache::get($cachedKey);
+        $cached = Cache::get($cachedKey.'1');
         if( is_null($cached) ){
             try{
                 $getContentResponse = $this->doRequest($endPoint, []);
