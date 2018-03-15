@@ -95,11 +95,11 @@ class LicenseClient
     {
         $endPoint = '/v1/site/' . $this->licenseConfig['site'] . '/content/' . $id;
         $cachedKey = "GET-" . $endPoint;
-        $cached = Cache::get($cachedKey.'1');
-        if( is_null($cached) ){
-            try{
+        $cached = Cache::get($cachedKey . '1');
+        if (is_null($cached)) {
+            try {
                 $getContentResponse = $this->doRequest($endPoint, []);
-            } catch (\Exception $e){
+            } catch (\Exception $e) {
                 Log::error('Unable to get content for ' . $id . ': ' . $e->getMessage());
                 return false;
             }
@@ -143,6 +143,28 @@ class LicenseClient
         }
 
         return $addContentJson;
+    }
+
+    /**
+     * Remove all licenses and set a new license
+     * 
+     * @param $id Content id
+     * @param $license_id License ID
+     * @return mixed
+     */
+    public function setLicense($id, $license_id)
+    {
+        $content = $this->getContent($id);
+        $licenses = $content->licenses;
+        foreach ($licenses as $license) {
+            $this->removeLicense($id, $license);
+        }
+
+        $response = $this->addLicense($id, $license_id);
+
+        $newLicense = $response->licenses[0];
+
+        return $newLicense;
     }
 
     public function removeLicense($id, $license_id)
@@ -226,7 +248,7 @@ class LicenseClient
                 $this->oauthToken = $oauthJson->access_token;
                 Cache::put($tokenName, $this->oauthToken, 3);
             } catch (\Exception $e) {
-                Log::error(__METHOD__. ': Unable to get token: URL: '.$authUrl.'. Wrong key/secret?');
+                Log::error(__METHOD__ . ': Unable to get token: URL: ' . $authUrl . '. Wrong key/secret?');
                 return false;
             }
         }
@@ -257,7 +279,7 @@ class LicenseClient
         }
 
 
-        if( empty($responseJson->copyable) ){
+        if (empty($responseJson->copyable)) {
             return false;
         }
         return true;
