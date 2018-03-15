@@ -12,11 +12,21 @@ class LicenseClient
     protected $oauthKey, $oauthSecret;
     protected $oauthToken = null;
 
+    const LICENSE_CC = 'CC';
+    const LICENSE_BY = 'BY';
+    const LICENSE_SA = 'SA';
+    const LICENSE_ND = 'ND';
+    const LICENSE_NC = 'NC';
+    const LICENSE_PD = 'PD';
+    const LICENSE_CC0 = 'CC0';
+    const LICENSE_PRIVATE = 'PRIVATE';
+    const LICENSE_COPYRIGHT = 'COPYRIGHT';
+
     public function __construct($licenseConfig = [], $oauthKey = null, $oauthSecret = null)
     {
         $this->licenseConfig = empty($licenseConfig) ? config('license') : $licenseConfig;
         $this->oauthKey = empty($oauthKey) ? config('cerpus-auth.key') : $oauthKey;
-	    $this->oauthSecret = empty($oauthSecret) ? config('cerpus-auth.secret') : $oauthSecret;
+        $this->oauthSecret = empty($oauthSecret) ? config('cerpus-auth.secret') : $oauthSecret;
         $this->verifyConfig();
     }
 
@@ -235,21 +245,137 @@ class LicenseClient
         return $this->isLicenseCopyable($license);
     }
 
-	public function isLicenseCopyable($license)
-	{
-		$endpoint = sprintf('v1/licenses/%s/copyable', $license);
+    public function isLicenseCopyable($license)
+    {
+        $endpoint = sprintf('v1/licenses/%s/copyable', $license);
 
-		try{
-			$responseBody = $this->doRequest($endpoint);
-			$responseJson = json_decode($responseBody);
-		} catch (\Exception $e){
-			return false;
-		}
+        try{
+            $responseBody = $this->doRequest($endpoint);
+            $responseJson = json_decode($responseBody);
+        } catch (\Exception $e){
+            return false;
+        }
 
 
-		if( empty($responseJson->copyable) ){
-			return false;
-		}
-		return true;
-	}
+        if( empty($responseJson->copyable) ){
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param string $license
+     * @return array
+     */
+    public static function splitCode($license)
+    {
+        $parts = explode('-', strtoupper($license));
+        sort($parts, SORT_STRING);
+
+        return $parts;
+    }
+
+    /**
+     * @param string $licensePart Part of license to get name of, e.g. 'ND'
+     * @param string $langCode Currently supported 'en-gb', 'nb-no', 'sv-se'
+     * @return string
+     */
+    public static function getLicensePartName($licensePart, $langCode = 'en-gb')
+    {
+        $translations = [];
+        $licensePart = strtoupper($licensePart);
+
+        switch (strtolower($langCode)) {
+            case 'nb-no':
+                $translations = [
+                    self::LICENSE_CC => 'Creative Commons',
+                    self::LICENSE_BY => 'Navngivelse',
+                    self::LICENSE_SA => 'Del på samme vilkår',
+                    self::LICENSE_ND => 'Ingen bearbeidelse',
+                    self::LICENSE_NC => 'Ikkekommersiell',
+                    self::LICENSE_CC0 => 'Zero',
+                    self::LICENSE_PRIVATE => 'Copyright',
+                    self::LICENSE_COPYRIGHT => 'Copyright',
+                ];
+                break;
+            case 'sv-se':
+                $translations = [
+                    self::LICENSE_CC => 'Creative Commons',
+                    self::LICENSE_BY => 'Erkännande',
+                    self::LICENSE_SA => 'Dela lika',
+                    self::LICENSE_ND => 'Inga bearbetningar',
+                    self::LICENSE_NC => 'Icke kommersiel',
+                    self::LICENSE_CC0 => 'Zero',
+                    self::LICENSE_PRIVATE => 'Copyright',
+                    self::LICENSE_COPYRIGHT => 'Copyright',
+                ];
+                break;
+            case 'en-gb':
+                // No break;
+            default:
+                $translations = [
+                    self::LICENSE_CC => 'Creative Commons',
+                    self::LICENSE_BY => 'Attribution',
+                    self::LICENSE_SA => 'Share alike',
+                    self::LICENSE_ND => 'No derivatives',
+                    self::LICENSE_NC => 'Non commercial',
+                    self::LICENSE_CC0 => 'Zero',
+                    self::LICENSE_PRIVATE => 'Copyright',
+                    self::LICENSE_COPYRIGHT => 'Copyright',
+                ];
+                break;
+        }
+
+        return (array_key_exists($licensePart, $translations) ? $translations[$licensePart] : '');
+    }
+
+    /**
+     * @param string $license The full license string e.g. 'CC-BY-ND'
+     * @param string $langCode Currently supported 'en-gb', 'nb-no', 'sv-se'
+     * @return string
+     */
+    public static function getCreativeCommonsLink($license, $langCode = 'en-gb')
+    {
+        $licenseUrl = '';
+        switch (strtoupper($license)) {
+            case self::LICENSE_CC0:
+                // This has no tranlsations
+                return 'https://creativecommons.org/share-your-work/public-domain/pdm';
+                break;
+            case 'CC-BY':
+                $licenseUrl = 'https://creativecommons.org/licenses/by/4.0/';
+                break;
+            case 'CC-BY-SA':
+                $licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/';
+                break;
+            case 'CC-BY-ND':
+                $licenseUrl = 'https://creativecommons.org/licenses/by-nd/4.0/';
+                break;
+            case 'CC-BY-NC':
+                $licenseUrl = 'https://creativecommons.org/licenses/by-nc/4.0/';
+                break;
+            case 'CC-BY-NC-SA':
+                $licenseUrl = 'https://creativecommons.org/licenses/by-nc-sa/4.0/';
+                break;
+            case 'CC-BY-NC-ND':
+                $licenseUrl = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
+                break;
+        }
+
+        if ($licenseUrl !== '') {
+            switch (strtolower($langCode)) {
+                case 'en-gb':
+                    return $licenseUrl;
+                    break;
+                case 'nb-no':
+                    return $licenseUrl . 'deed.no';
+                    break;
+                case 'sv-se':
+                    return $licenseUrl . 'deed.sv';
+                    break;
+            }
+        }
+
+        return $licenseUrl;
+    }
 }
