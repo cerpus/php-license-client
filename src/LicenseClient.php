@@ -5,6 +5,8 @@ namespace Cerpus\LicenseClient;
 use Log;
 use Cache;
 use GuzzleHttp\Client;
+use Illuminate\Http\Response;
+use GuzzleHttp\Exception\ClientException;
 
 class LicenseClient
 {
@@ -12,13 +14,15 @@ class LicenseClient
     protected $oauthKey, $oauthSecret;
     protected $oauthToken = null;
 
+    const LICENSE_PDM = 'PDM';
+    const LICENSE_CC0 = 'CC0';
+
     const LICENSE_CC = 'CC';
     const LICENSE_BY = 'BY';
     const LICENSE_SA = 'SA';
     const LICENSE_ND = 'ND';
     const LICENSE_NC = 'NC';
-    const LICENSE_PD = 'PD';
-    const LICENSE_CC0 = 'CC0';
+
     const LICENSE_PRIVATE = 'PRIVATE';
     const LICENSE_COPYRIGHT = 'COPYRIGHT';
 
@@ -50,7 +54,7 @@ class LicenseClient
         $this->oauthSecret = $oauthSecret;
     }
 
-    public function getLicenses()
+    public function getLicenses(): array
     {
         $licenseKey = __METHOD__ . '-licenses';
         $licenses = Cache::get($licenseKey);
@@ -65,6 +69,7 @@ class LicenseClient
             $licenses = json_decode($licenses);
             Cache::put($licenseKey, $licenses, 7);
         }
+
         return $licenses;
     }
 
@@ -147,7 +152,7 @@ class LicenseClient
 
     /**
      * Remove all licenses and set a new license
-     * 
+     *
      * @param $id Content id
      * @param $license_id License ID
      * @return mixed
@@ -209,6 +214,12 @@ class LicenseClient
 
                 return false;
             }
+        } catch (ClientException $e) {
+            if ($e->getCode() !== Response::HTTP_NOT_FOUND) {
+                throw $e;
+            }
+
+            return false;
         } catch (\Exception $e) {
             Log::error(__METHOD__ . " $method request to " . $this->licenseConfig['server'] . $endPoint . " failed. " . $e->getCode() . ' ' . $e->getMessage(),
                 $finalParams);
@@ -271,10 +282,10 @@ class LicenseClient
     {
         $endpoint = sprintf('v1/licenses/%s/copyable', $license);
 
-        try{
+        try {
             $responseBody = $this->doRequest($endpoint);
             $responseJson = json_decode($responseBody);
-        } catch (\Exception $e){
+        } catch (\Exception $e) {
             return false;
         }
 
@@ -282,6 +293,7 @@ class LicenseClient
         if (empty($responseJson->copyable)) {
             return false;
         }
+
         return true;
     }
 
@@ -318,6 +330,7 @@ class LicenseClient
                     self::LICENSE_CC0 => 'Zero',
                     self::LICENSE_PRIVATE => 'Copyright',
                     self::LICENSE_COPYRIGHT => 'Copyright',
+                    self::LICENSE_PDM => 'Public Domain Mark',
                 ];
                 break;
             case 'sv-se':
@@ -330,6 +343,7 @@ class LicenseClient
                     self::LICENSE_CC0 => 'Zero',
                     self::LICENSE_PRIVATE => 'Copyright',
                     self::LICENSE_COPYRIGHT => 'Copyright',
+                    self::LICENSE_PDM => 'Public Domain Mark',
                 ];
                 break;
             case 'en-gb':
@@ -344,6 +358,7 @@ class LicenseClient
                     self::LICENSE_CC0 => 'Zero',
                     self::LICENSE_PRIVATE => 'Copyright',
                     self::LICENSE_COPYRIGHT => 'Copyright',
+                    self::LICENSE_PDM => 'Public Domain Mark',
                 ];
                 break;
         }
@@ -360,25 +375,34 @@ class LicenseClient
     {
         $licenseUrl = '';
         switch (strtoupper($license)) {
-            case self::LICENSE_CC0:
-                // This has no tranlsations
+            case self::LICENSE_PDM:
                 return 'https://creativecommons.org/share-your-work/public-domain/pdm';
                 break;
+
+            case self::LICENSE_CC0:
+                $licenseUrl = 'https://creativecommons.org/publicdomain/zero/1.0/';
+                break;
+
             case 'CC-BY':
                 $licenseUrl = 'https://creativecommons.org/licenses/by/4.0/';
                 break;
+
             case 'CC-BY-SA':
                 $licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/';
                 break;
+
             case 'CC-BY-ND':
                 $licenseUrl = 'https://creativecommons.org/licenses/by-nd/4.0/';
                 break;
+
             case 'CC-BY-NC':
                 $licenseUrl = 'https://creativecommons.org/licenses/by-nc/4.0/';
                 break;
+
             case 'CC-BY-NC-SA':
                 $licenseUrl = 'https://creativecommons.org/licenses/by-nc-sa/4.0/';
                 break;
+
             case 'CC-BY-NC-ND':
                 $licenseUrl = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
                 break;
