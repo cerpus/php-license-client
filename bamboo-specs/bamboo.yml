@@ -8,7 +8,7 @@ stages:
   - Build:
     - Create package
 
-Create package and run tests:
+Create package:
   tasks:
     - script: |
         rm -rf code &&
