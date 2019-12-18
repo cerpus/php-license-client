@@ -1,0 +1,26 @@
+---
+version: 2
+plan:
+  project-key: BCP
+  key: LIC1
+  name: LicenseClient
+stages:
+  - Build:
+    - Create package
+
+Create package and run tests:
+  tasks:
+    - script: |
+        rm -rf code &&
+        mkdir -p code &&
+        (mv * .* code/ || true) &&
+
+        cd code &&
+        rm -rf .git &&
+        tar czvf ../licenseclient.tar.gz ./
+  artifacts:
+    - name: licenseclient.tar.gz
+      location: ./
+      pattern: licenseclient.tar.gz
+      required: true
+      shared: true
