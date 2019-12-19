@@ -26,6 +26,8 @@ class LicenseClient
     const LICENSE_PRIVATE = 'PRIVATE';
     const LICENSE_COPYRIGHT = 'COPYRIGHT';
 
+    const LICENSE_EDLIB = "EDLL";
+
     public function __construct($licenseConfig = [], $oauthKey = null, $oauthSecret = null)
     {
         $this->licenseConfig = empty($licenseConfig) ? config('license') : $licenseConfig;
@@ -331,6 +333,7 @@ class LicenseClient
                     self::LICENSE_PRIVATE => 'Copyright',
                     self::LICENSE_COPYRIGHT => 'Copyright',
                     self::LICENSE_PDM => 'Public Domain Mark',
+                    self::LICENSE_EDLIB =>" EdLib lisens",
                 ];
                 break;
             case 'sv-se':
@@ -344,6 +347,7 @@ class LicenseClient
                     self::LICENSE_PRIVATE => 'Copyright',
                     self::LICENSE_COPYRIGHT => 'Copyright',
                     self::LICENSE_PDM => 'Public Domain Mark',
+                    self::LICENSE_EDLIB =>" EdLib license",
                 ];
                 break;
             case 'en-gb':
@@ -359,6 +363,7 @@ class LicenseClient
                     self::LICENSE_PRIVATE => 'Copyright',
                     self::LICENSE_COPYRIGHT => 'Copyright',
                     self::LICENSE_PDM => 'Public Domain Mark',
+                    self::LICENSE_EDLIB =>" EdLib license",
                 ];
                 break;
         }
