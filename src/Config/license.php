@@ -14,4 +14,5 @@ return [
         'token' => '',
         'token_secret' => '',
     ],
+    'cacheTTL' => 3600,
 ];

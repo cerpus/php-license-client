@@ -5,12 +5,13 @@ namespace Cerpus\LicenseClient;
 
 
 use Cerpus\LicenseClient\Contracts\LicenseContract;
+use Illuminate\Support\Facades\Facade;
 
 /**
  * Class LicenseClient
  * @package Cerpus\LicenseClient
  */
-class LicenseClient
+class LicenseClient extends Facade
 {
     /**
      * @var string

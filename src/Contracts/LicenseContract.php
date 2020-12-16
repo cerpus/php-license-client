@@ -41,4 +41,6 @@ interface LicenseContract
     public function isContentCopyable($id);
 
     public function isLicenseCopyable($license);
+
+    public function isLicenseSupported($license);
 }

@@ -33,7 +33,7 @@ class LicenseApiAdapter implements LicenseContract
 
     public function getLicenses(): array
     {
-        $licenseKey = __METHOD__ . '-licenses';
+        $licenseKey = $this->getCacheKey('licenses');
         $licenses = Cache::get($licenseKey);
         if (is_null($licenses)) {
             $licenses = $this->doRequest(self::LICENSES_ENDPOINT);
@@ -41,7 +41,7 @@ class LicenseApiAdapter implements LicenseContract
                 return []; // Empty list
             }
             $licenses = json_decode($licenses);
-            Cache::put($licenseKey, $licenses, 7);
+            Cache::put($licenseKey, $licenses, config('license.cacheTTL', 3600));
         }
 
         return $licenses;
@@ -210,5 +210,19 @@ class LicenseApiAdapter implements LicenseContract
         }
 
         return true;
+    }
+
+    public function isLicenseSupported($providedLicense)
+    {
+        return collect($this->getLicenses())
+        ->filter(function ($license) use ($providedLicense) {
+            return strtolower($license->id) === strtolower($providedLicense);
+        })
+        ->isNotEmpty();
+    }
+
+    private function getCacheKey($key)
+    {
+        return config('license.cacheKey') . '-' . $key;
     }
 }

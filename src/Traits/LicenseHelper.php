@@ -18,6 +18,7 @@ trait LicenseHelper
         'CC0',
         'PRIVATE',
         'PDM',
+        LicenseContract::LICENSE_EDLIB
     ];
 
     protected $throwawayLicenseParts = [
@@ -49,6 +50,7 @@ trait LicenseHelper
         'C',
         'CC0',
         'PDM',
+        LicenseContract::LICENSE_EDLIB,
     ];
 
     // This must be in sync with $licenseShortFormParts for replacement to happen correctly
@@ -62,6 +64,7 @@ trait LicenseHelper
             'COPYRIGHT',
             'ZERO',
             'PUBLIC DOMAIN MARK',
+            'EDLIB LICENSE',
         ],
         'no' => [
             'NAVNGIVELSE',
@@ -72,22 +75,17 @@ trait LicenseHelper
             'COPYRIGHT',
             'ZERO',
             'PUBLIC DOMAIN MARK',
+            'EDLIB LISENS',
         ]
     ];
 
-    public function canImport($copyright)
-    {
-        $license = $this->toEdLibLicenseString($copyright->license->license ?? '');
-
-        $result = mb_strstr($license, 'BY') || in_array($license, ['PDM', 'CC0']);
-
-        if ($result === false) {
-            return false;
-        }
-
-        return true;
-    }
-
+    /**
+     * @param $copyright
+     * @param string $backLinkUri
+     * @return string
+     *
+     * @deprecated
+     */
     public function makeAttributionString($copyright, $backLinkUri = 'unknown')
     {
         $license = $copyright->license->license ? ('License: ' . $copyright->license->license) : '';
@@ -185,6 +183,7 @@ trait LicenseHelper
             'CC0',
             'PRIVATE',
             'PDM',
+            LicenseContract::LICENSE_EDLIB,
         ];
 
         // Create a new array containing the license parts in the correct order
@@ -202,37 +201,10 @@ trait LicenseHelper
     }
 
     /**
-     * Normalizes a license string and returns the H5P equivalent license string. If EdLib does not support the resulting license null is returned.
-     *
-     * @param $licenseString The string to get H5P equivalent license for
-     * @return string|null The H5P licens string, or null if license is unsupported in EdLib.
-     */
-    public function toH5PLicenseString($licenseString)
-    {
-        if (!$normalizedString = $this->toEdLibLicenseString($licenseString)) {
-            return null;
-        }
-
-        $normalizedLicenseToH5PLicenseMap = [
-            'CC0' => 'CC0 1.0',
-            'BY' => 'CC BY',
-            'BY-SA' => 'CC BY-SA',
-            'BY-ND' => 'CC BY-ND',
-            'BY-NC' => 'CC BY-NC',
-            'BY-NC-SA' => 'CC BY-NC-SA',
-            'BY-NC-ND' => 'CC BY-NC-ND',
-            'PRIVATE' => 'C',
-            'PDM' => 'CC PDM',
-        ];
-
-        $h5pLicense = $normalizedLicenseToH5PLicenseMap[$normalizedString];
-
-        return $h5pLicense;
-    }
-
-    /**
      * @param string $license
      * @return array
+     *
+     * @deprecated
      */
     public static function splitCode($license)
     {
@@ -246,6 +218,8 @@ trait LicenseHelper
      * @param string $licensePart Part of license to get name of, e.g. 'ND'
      * @param string $langCode Currently supported 'en-gb', 'nb-no', 'sv-se'
      * @return string
+     *
+     * @deprecated
      */
     public static function getLicensePartName($licensePart, $langCode = 'en-gb')
     {
@@ -305,6 +279,8 @@ trait LicenseHelper
      * @param string $license The full license string e.g. 'CC-BY-ND'
      * @param string $langCode Currently supported 'en-gb', 'nb-no', 'sv-se'
      * @return string
+     *
+     * @deprecated
      */
     public static function getCreativeCommonsLink($license, $langCode = 'en-gb')
     {
