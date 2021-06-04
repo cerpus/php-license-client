@@ -32,6 +32,8 @@ interface LicenseContract
 
     public function getContent($id);
 
+    public function getContents($ids);
+
     public function deleteContent($id);
 
     public function addLicense($id, $licenseId);

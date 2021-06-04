@@ -18,6 +18,7 @@ class LicenseApiAdapter implements LicenseContract
     const LICENSES_ENDPOINT = 'v1/licenses';
     const LICENSES_COPYABLE_ENDPOINT = 'v1/licenses/%s/copyable';
     const LICENSES_SITE_ENDPOINT = 'v1/site/%s/content';
+    const LICENSES_SITE_ENDPOINT_MULTIPLE = 'v1/site/%s/content-by-id';
     const LICENSES_CONTENT_ENDPOINT = self::LICENSES_SITE_ENDPOINT . '/%s';
 
     /** @var Client */
@@ -79,6 +80,24 @@ class LicenseApiAdapter implements LicenseContract
         if ($getContentResponse === false) {
             return false;
         }
+        return (object)json_decode($getContentResponse);
+    }
+
+    public function getContents($ids)
+    {
+        try {
+            $getContentResponse = $this->doRequest(sprintf(self::LICENSES_SITE_ENDPOINT_MULTIPLE, $this->site), [
+                "content_ids" => $ids
+            ], "POST");
+        } catch (Exception $e) {
+            Log::error('Unable to get content for ' . $ids . ': ' . $e->getMessage());
+            return false;
+        }
+
+        if ($getContentResponse === false) {
+            return false;
+        }
+
         return (object)json_decode($getContentResponse);
     }
 
@@ -215,10 +234,10 @@ class LicenseApiAdapter implements LicenseContract
     public function isLicenseSupported($providedLicense)
     {
         return collect($this->getLicenses())
-        ->filter(function ($license) use ($providedLicense) {
-            return strtolower($license->id) === strtolower($providedLicense);
-        })
-        ->isNotEmpty();
+            ->filter(function ($license) use ($providedLicense) {
+                return strtolower($license->id) === strtolower($providedLicense);
+            })
+            ->isNotEmpty();
     }
 
     private function getCacheKey($key)

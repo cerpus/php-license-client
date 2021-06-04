@@ -7,7 +7,6 @@ use Cerpus\LicenseClient\Contracts\LicenseContract;
 
 trait LicenseHelper
 {
-
     protected $validLicenses = [
         'BY',
         'BY-SA',
