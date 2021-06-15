@@ -14,10 +14,9 @@
             "email": "thomass@cerpus.com"
         }
     ],
-    "minimum-stability": "stable",
     "require": {
-        "guzzlehttp/guzzle": "^6.2",
-        "cerpus/cerpushelper": "^1.4",
+        "guzzlehttp/guzzle": "*",
+        "cerpus/cerpushelper": "^1.5",
         "ext-json": "*"
     },
     "autoload": {
