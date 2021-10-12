@@ -3,7 +3,7 @@
     "description": "Use the Cerpus License server to manage license for content",
     "keywords": ["laravel", "Cerpus License-Server Client"],
     "type": "library",
-    "license": "Closed",
+    "license": "GPL-3.0",
     "authors": [
         {
             "name": "Odd-Arne Johansen",
